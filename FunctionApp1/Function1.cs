@@ -4,67 +4,98 @@ using System.Net.Http;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Azure.WebJobs.Host;
-using AlexaSkillsKit;
-using AlexaSkillsKit.Speechlet;
-using AlexaSkillsKit.UI;
 using BusInfo;
 using System.Threading.Tasks;
 using System.Text;
+using Alexa.NET.Response;
+using Alexa.NET.Request;
+using Alexa.NET.Request.Type;
 
 namespace FunctionApp1
 {
     public static class Function1
     {
+
         [FunctionName("Function1")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequestMessage req, TraceWriter log)
         {
-            log.Info($"Request {req}");
-
-            // parse query parameter
-            //string name = req.GetQueryNameValuePairs()
-            //    .FirstOrDefault(q => string.Compare(q.Key, "name", true) == 0)
-            //    .Value;
-
-            // Get request body
             dynamic data = await req.Content.ReadAsAsync<object>();
-            log.Info($"Content= {data}");
+            var request = data.request;
+            var requestType = request.GetRequestType();
 
-            // Mock data to test
-            MyStopInfo busInfo = new MyStopInfo(new BusLocator(), new TimeZoneConverter());
-
-
-            var results = await busInfo.GetArrivalTimesForRouteName("545", "47.611959", "-122.332893");
-            var minutes = results.Select(x => x.Minute);
-            
-            string CreateMsg()
+            if (requestType == typeof(IntentRequest))
             {
-                var sb = new StringBuilder();
-                foreach(var m in minutes)
+                var intentRequest = request as IntentRequest;
+                var context = data.Context.System.Device;
+                var deviceId = context.DeviceID;
+                log.Info($"Device: {deviceId}");
+
+                if (intentRequest.Intent.Name.Equals("Transit"))
                 {
-                    var units = m == 1 ? "minute" : "minutes";
-                    sb.Append($"{m} {units},");
+                    // get the slots
+                    var firstValue = intentRequest.Intent.Slots["RouteName"].Value;
+                    log.Info($"firstValue: {firstValue}");
+                    MyStopInfo busInfo = new MyStopInfo(new BusLocator(), new TimeZoneConverter());
+                    var results = await busInfo.GetArrivalTimesForRouteName(firstValue, "47.611959", "-122.332893");
+                    var minutes = results.Select(x => x.Minute);
+                    string CreateMsg()
+                    {
+                        var sb = new StringBuilder();
+                        foreach (var min in minutes)
+                        {
+                            var units = min == 1 ? "minute" : "minutes";
+                            sb.Append($"{min} {units},");
+                        }
+                        return $"The next {firstValue} bus comes in {sb}";
+                    }
+
+
+                    // create the speech response - you most likely will still have this
+                    var speech = new PlainTextOutputSpeech();
+                    speech.Text = CreateMsg();
+
+                    // create the response
+                    var responseBody = new ResponseBody();
+                    responseBody.OutputSpeech = speech;
+                    responseBody.ShouldEndSession = true;
+
+                    var skillResponse = new SkillResponse();
+                    skillResponse.Response = responseBody;
+                    skillResponse.Version = "1.1";
+
+
+                    var m = new HttpRequestMessage();
+
+                    return m.CreateResponse(HttpStatusCode.OK, skillResponse) ;
+
+
                 }
-                return $"The next 545 bus comes in {sb}";
             }
-
-
-            //string intentName = data.request.intent.name;
-            //log.Info($"intentName={intentName}");
-
-
-            var speechletResponse = new SpeechletResponse()
+            else if (requestType == typeof(LaunchRequest))
             {
-                OutputSpeech = new PlainTextOutputSpeech() { Text = $"Hello {CreateMsg()}" },
-                ShouldEndSession = true
-            };
+            }
+            else
+            {
 
-            var card = new SimpleCard() { Content = "card contents", Title = "card title" };
+            }
+            var speech2 = new PlainTextOutputSpeech();
+            speech2.Text = "Hello";
 
+            // create the response
+            var responseBody2= new ResponseBody();
+            responseBody2.OutputSpeech = speech2;
+            responseBody2.ShouldEndSession = true;
 
-            return req.CreateResponse(HttpStatusCode.OK, speechletResponse);
+            var skillResponse2 = new SkillResponse();
+            skillResponse2.Response = responseBody2;
+            skillResponse2.Version = "1.1";
+
+            var m2 = new HttpRequestMessage();
+
+            return m2.CreateResponse(HttpStatusCode.OK, new { skillResponse2 });
         }
-    }
 
+    }
 
     public class AlexaConstants
     {

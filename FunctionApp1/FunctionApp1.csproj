@@ -3,7 +3,7 @@
     <TargetFramework>net461</TargetFramework>
   </PropertyGroup>
   <ItemGroup>    
-    <PackageReference Include="Alexa4.NetCore" Version="1.0.0-preview1-001" />    
+    <PackageReference Include="Alexa.NET" Version="1.2.0-pre" />    
     <PackageReference Include="Microsoft.NET.Sdk.Functions" Version="1.0.2" />    
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />    
     <PackageReference Include="System.ValueTuple" Version="4.4.0" />
