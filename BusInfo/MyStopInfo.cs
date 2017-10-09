@@ -391,8 +391,8 @@ namespace BusInfo
         {
             BusHelpers.ValidateLatLon(lat, lon);
             // find the route object for the given name and the closest stop for that route
-            (Route route, Stop stop) = await GetRouteAndStopForLocation(routeShortName, lat, lon);
-            List<ArrivalsAndDeparture> arrivalData = await GetArrivalsAndDepartures(stop.Id, route.ShortName);
+            var busInfo = await GetRouteAndStopForLocation(routeShortName, lat, lon);
+            List<ArrivalsAndDeparture> arrivalData = await GetArrivalsAndDepartures(busInfo.Item2.Id, busInfo.Item1.ShortName);
             IEnumerable<DateTime> UtcData = arrivalData.Select(a => new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                                                .AddMilliseconds(Convert.ToDouble(a.PredictedArrivalTime))).Take(3);
             // Convert from UTC to user's timezone
@@ -504,16 +504,6 @@ namespace BusInfo
         // Checks if given latitude and longitude are valid entries
         public static void ValidateLatLon(string lat, string lon)
         {
-            if (lat == null)
-            {
-                throw new ArgumentNullException(nameof(lat));
-            }
-
-            if (lon == null)
-            {
-                throw new ArgumentNullException(nameof(lon));
-            }
-
             if (lat.Length > 0 && lon.Length > 0)
             {
                 double latDouble = double.Parse(lat);
